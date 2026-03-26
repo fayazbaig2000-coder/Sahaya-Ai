@@ -606,8 +606,15 @@ export default function App() {
     try {
       setPendingRole(role);
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert("This domain is not authorized in Firebase. Please add your Netlify URL to the 'Authorized Domains' list in the Firebase Console (Authentication > Settings).");
+      } else if (error.code === 'auth/popup-blocked') {
+        alert("The login popup was blocked by your browser. Please allow popups for this site.");
+      } else {
+        alert("Login failed: " + error.message);
+      }
     }
   };
 
