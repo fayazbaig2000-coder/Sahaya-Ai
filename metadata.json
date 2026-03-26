@@ -1,0 +1,5 @@
+{
+  "name": "Sahaya AI",
+  "description": "A multilingual police complaint portal with AI-assisted reporting, SOS emergency features, and real-time status tracking.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}

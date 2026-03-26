@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "bio": { "type": "string" },
+        "memberSince": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["CITIZEN", "OFFICER", "ADMIN"] },
+        "preferredLanguage": { "type": "string" }
+      },
+      "required": ["uid", "displayName", "email", "role"]
+    },
+    "Complaint": {
+      "title": "Police Complaint",
+      "description": "Stores police complaint details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "address": { "type": "string" },
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["PENDING", "IN_PROGRESS", "RESOLVED", "REJECTED"] },
+        "evidenceUrl": { "type": "string" },
+        "isPanicMode": { "type": "boolean" },
+        "referenceId": { "type": "string" },
+        "assignedOfficerId": { "type": "string" },
+        "officerName": { "type": "string" },
+        "officerRank": { "type": "string" },
+        "officerPhone": { "type": "string" }
+      },
+      "required": ["userId", "type", "description", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles."
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Police complaints."
+    }
+  }
+}

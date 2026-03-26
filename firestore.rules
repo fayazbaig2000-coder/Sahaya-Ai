@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (Auth UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (required, email format)
+    //   - photoURL: string (optional)
+    //   - phoneNumber: string (optional)
+    //   - bio: string (optional)
+    //   - memberSince: timestamp (required)
+    //   - role: string (required, enum: CITIZEN, OFFICER, ADMIN)
+    //
+    // Collection: complaints
+    // Document ID: complaintId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required)
+    //   - userName: string (required)
+    //   - type: string (required)
+    //   - description: string (required)
+    //   - location: map (required)
+    //     - address: string
+    //     - latitude: number
+    //     - longitude: number
+    //   - timestamp: timestamp (required)
+    //   - status: string (required, enum: PENDING, IN_PROGRESS, RESOLVED, REJECTED)
+    //   - evidenceUrl: string (optional)
+    //   - isPanicMode: bool (required)
+    //   - referenceId: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN' ||
+         (request.auth.token.email == "fayazbaig2000@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isOfficer() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'OFFICER';
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'displayName', 'email', 'role', 'memberSince']) &&
+             data.uid == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['CITIZEN', 'OFFICER', 'ADMIN'] &&
+             (data.role == 'CITIZEN' || isAdmin()); // Only admin can set other roles
+    }
+
+    function isValidComplaint(data) {
+      return hasRequiredFields(['userId', 'userName', 'type', 'description', 'status', 'timestamp', 'isPanicMode', 'referenceId']) &&
+             data.userId == request.auth.uid &&
+             data.type is string && data.type.size() > 0 && data.type.size() < 100 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 5000 &&
+             data.status in ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'] &&
+             data.isPanicMode is bool;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin()) && 
+                    isValidUser(request.resource.data) &&
+                    (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /complaints/{complaintId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isOfficer() || isAdmin());
+      allow create: if isAuthenticated() && isValidComplaint(request.resource.data);
+      allow update: if isAuthenticated() && (isOfficer() || isAdmin()) &&
+                    hasOnlyAllowedFields(resource.data.keys().concat(['status', 'assignedOfficerId', 'officerName', 'officerRank', 'officerPhone'])) &&
+                    request.resource.data.status in ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'];
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
