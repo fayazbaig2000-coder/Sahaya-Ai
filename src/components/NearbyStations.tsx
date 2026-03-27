@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { MapPin, Navigation, PhoneCall, Shield, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { Language, useTranslation } from '../lib/translations';
 
 const stations = [
   { id: '1', name: 'Itukalapalli Police Station', distance: '4.0 km', time: '7.8 minutes', type: 'Nearby Police Station' },
@@ -12,7 +13,8 @@ const stations = [
   { id: '6', name: 'Traffic Police Station', distance: '8.5 km', time: '21.3 minutes', type: 'Nearby Police Station' },
 ];
 
-export const NearbyStations = () => {
+export const NearbyStations = ({ lang }: { lang: Language }) => {
+  const { t } = useTranslation(lang);
   const [selectedStation, setSelectedStation] = React.useState<any>(null);
 
   return (
@@ -23,8 +25,8 @@ export const NearbyStations = () => {
             <Shield size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Nearby Police Stations</h2>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Multilingual Police Portal</p>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">{t('nearby_stations')}</h2>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">{t('multilingual_portal')}</p>
           </div>
         </div>
         
@@ -38,7 +40,7 @@ export const NearbyStations = () => {
               onClick={() => setSelectedStation(null)}
               className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 mb-4"
             >
-              <ChevronRight size={14} className="rotate-180" /> Back to list
+              <ChevronRight size={14} className="rotate-180" /> {t('back_to_list') || 'Back to list'}
             </button>
             <div className="p-4 bg-gray-900 rounded-3xl overflow-hidden relative aspect-video">
               <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/map/800/450')] bg-cover bg-center opacity-50" />
@@ -54,7 +56,7 @@ export const NearbyStations = () => {
                   {selectedStation.distance} • {selectedStation.time}
                 </div>
                 <button className="bg-green-600 text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
-                  Open in Google Maps
+                  {t('open_in_maps') || 'Open in Google Maps'}
                 </button>
               </div>
             </div>
@@ -74,11 +76,11 @@ export const NearbyStations = () => {
           </motion.div>
         ) : (
           <>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-6">Emergency & Legal Assistance</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-6">{t('emergency_assistance') || 'Emergency & Legal Assistance'}</p>
             
             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-8">
               <p className="text-xs text-gray-600 italic leading-relaxed">
-                "The closest police station is Itukalapalli Police Station, located 4.0 kilometers away with a driving travel time of 7.8 minutes."
+                {t('closest_station_hint') || '"The closest police station is Itukalapalli Police Station, located 4.0 kilometers away with a driving travel time of 7.8 minutes."'}
               </p>
             </div>
 
@@ -108,7 +110,7 @@ export const NearbyStations = () => {
                       <PhoneCall size={14} />
                     </button>
                     <button className="text-[10px] font-bold text-green-600 flex items-center gap-1">
-                      View Map <ChevronRight size={12} />
+                      {t('view_map') || 'View Map'} <ChevronRight size={12} />
                     </button>
                   </div>
                 </motion.div>
@@ -121,10 +123,10 @@ export const NearbyStations = () => {
       <div className="p-6 bg-gray-900 rounded-3xl text-white">
         <div className="flex items-center gap-2 mb-4">
           <Navigation className="text-green-400" size={20} />
-          <h3 className="font-bold text-lg">Why this matters?</h3>
+          <h3 className="font-bold text-lg">{t('why_matters') || 'Why this matters?'}</h3>
         </div>
         <p className="text-sm text-gray-400 leading-relaxed">
-          In case of emergencies or when you need to report an incident in person, knowing the nearest police station is critical. SAHAYA AI uses real-time location data to provide you with immediate assistance and legal protection.
+          {t('why_matters_hint') || 'In case of emergencies or when you need to report an incident in person, knowing the nearest police station is critical. SAHAYA AI uses real-time location data to provide you with immediate assistance and legal protection.'}
         </p>
       </div>
     </div>

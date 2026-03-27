@@ -38,7 +38,9 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  handleFirestoreError,
+  OperationType
 } from './firebase';
 import { cn } from './lib/utils';
 import { UserProfile, Complaint, Message } from './types';
@@ -46,6 +48,8 @@ import { chatWithAssistant } from './services/geminiService';
 import { ComplaintForm } from './components/ComplaintForm';
 import { NearbyStations } from './components/NearbyStations';
 import { Settings } from './components/Settings';
+import { Language, useTranslation } from './lib/translations';
+import { PersonalContacts } from './components/PersonalContacts';
 
 // --- Helpers ---
 const formatDate = (timestamp: any) => {
@@ -72,7 +76,8 @@ const formatDateTime = (timestamp: any) => {
 
 // --- Components ---
 
-const SOSButton = () => {
+const SOSButton = ({ lang }: { lang: Language }) => {
+  const { t } = useTranslation(lang);
   const [isPressed, setIsPressed] = useState(false);
 
   const handleSOS = () => {
@@ -84,7 +89,7 @@ const SOSButton = () => {
   return (
     <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">Emergency</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">{t('emergency_contacts')}</h2>
       </div>
       <motion.button
         whileTap={{ scale: 0.95 }}
@@ -97,39 +102,37 @@ const SOSButton = () => {
         <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-2">
           <PhoneCall className="text-white w-8 h-8" />
         </div>
-        <span className="text-white font-black text-2xl tracking-tighter uppercase">Quick SOS</span>
-        <span className="text-white/80 text-xs font-medium uppercase tracking-widest">Tap for Emergency</span>
+        <span className="text-white font-black text-2xl tracking-tighter uppercase">{t('sos')}</span>
       </motion.button>
-      <div className="mt-4 flex items-center justify-center gap-2 text-red-600 font-bold">
-        <PhoneCall size={16} />
-        <span>Police 100</span>
-      </div>
     </div>
   );
 };
 
-const SahayaLite = () => (
-  <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 mb-6">
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">Support</h2>
-    </div>
-    <div className="flex items-start gap-3">
-      <div className="p-2 bg-green-50 rounded-lg">
-        <Navigation className="text-green-600 w-5 h-5" />
+const SahayaLite = ({ lang }: { lang: Language }) => {
+  const { t } = useTranslation(lang);
+  return (
+    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">{t('support') || 'Support'}</h2>
       </div>
-      <div>
-        <h3 className="font-bold text-gray-900">Sahaya Lite</h3>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          Rural area with spotty 5G/4G? Use our Zero-Connectivity Lite mode via SMS or USSD.
-        </p>
-        <div className="mt-3 flex gap-4">
-          <div className="text-[10px] font-mono bg-gray-50 px-2 py-1 rounded">SMS "HELP" to 56767</div>
-          <div className="text-[10px] font-mono bg-gray-50 px-2 py-1 rounded">DIAL *123# for USSD</div>
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-green-50 rounded-lg">
+          <Navigation className="text-green-600 w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900">{t('sahaya_lite_title') || 'Sahaya Lite'}</h3>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            {t('sahaya_lite_desc') || 'Rural area with spotty 5G/4G? Use our Zero-Connectivity Lite mode via SMS or USSD.'}
+          </p>
+          <div className="mt-3 flex gap-4">
+            <div className="text-[10px] font-mono bg-gray-50 px-2 py-1 rounded">{t('sms_help') || 'SMS "HELP" to 56767'}</div>
+            <div className="text-[10px] font-mono bg-gray-50 px-2 py-1 rounded">{t('dial_ussd') || 'DIAL *123# for USSD'}</div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ServiceCard = ({ icon: Icon, title, subtitle, color, onClick }: any) => (
   <motion.button
@@ -148,12 +151,13 @@ const ServiceCard = ({ icon: Icon, title, subtitle, color, onClick }: any) => (
   </motion.button>
 );
 
-const AIAssistant = ({ user }: { user: UserProfile }) => {
+const AIAssistant = ({ user, lang }: { user: UserProfile, lang: Language }) => {
+  const { t } = useTranslation(lang);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'model',
-      text: `Hello! I am Sahaya AI, specialized in police reporting. I can help you prepare a CCTNS-compatible complaint. How can I help you today?`,
+      text: t('ai_welcome_msg') || `Hello! I am Sahaya AI, specialized in police reporting. I can help you prepare a CCTNS-compatible complaint. How can I help you today?`,
       timestamp: Date.now()
     }
   ]);
@@ -246,14 +250,15 @@ const AIAssistant = ({ user }: { user: UserProfile }) => {
   );
 };
 
-const LanguageSelector = ({ onSelect }: { onSelect: (lang: string) => void }) => {
+const LanguageSelector = ({ onSelect, currentLang }: { onSelect: (lang: string) => void, currentLang?: string }) => {
+  const { t } = useTranslation(currentLang as Language || 'en');
   const languages = [
     { code: 'en', name: 'English', native: 'English' },
     { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
     { code: 'te', name: 'Telugu', native: 'తెలుగు' },
     { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
     { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
-    { code: 'ml', name: 'Malayalam', native: 'മലയാളം' },
+    { code: 'mr', name: 'Marathi', native: 'मराठी' },
   ];
 
   return (
@@ -261,8 +266,8 @@ const LanguageSelector = ({ onSelect }: { onSelect: (lang: string) => void }) =>
       <div className="w-20 h-20 bg-green-600 rounded-3xl flex items-center justify-center mb-8 shadow-xl shadow-green-100">
         <Globe className="text-white w-10 h-10" />
       </div>
-      <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Select Language</h1>
-      <p className="text-gray-500 mb-12 uppercase tracking-widest text-[10px] font-bold">Choose your preferred language</p>
+      <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">{t('select_language') || 'Select Language'}</h1>
+      <p className="text-gray-500 mb-12 uppercase tracking-widest text-[10px] font-bold">{t('choose_preferred_language') || 'Choose your preferred language'}</p>
       
       <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
         {languages.map((lang) => (
@@ -282,13 +287,15 @@ const LanguageSelector = ({ onSelect }: { onSelect: (lang: string) => void }) =>
   );
 };
 
-const OfficerDashboard = ({ user }: { user: UserProfile }) => {
+const OfficerDashboard = ({ user, lang }: { user: UserProfile, lang: Language }) => {
+  const { t } = useTranslation(lang);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const path = 'complaints';
     const q = query(
-      collection(db, 'complaints'),
+      collection(db, path),
       orderBy('timestamp', 'desc')
     );
 
@@ -296,12 +303,15 @@ const OfficerDashboard = ({ user }: { user: UserProfile }) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
       setComplaints(data);
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
     });
 
     return () => unsubscribe();
   }, []);
 
   const handleUpdateStatus = async (complaintId: string, status: string) => {
+    const path = `complaints/${complaintId}`;
     try {
       await updateDoc(doc(db, 'complaints', complaintId), {
         status,
@@ -311,7 +321,7 @@ const OfficerDashboard = ({ user }: { user: UserProfile }) => {
         officerPhone: user.phoneNumber || '9988776655'
       });
     } catch (error) {
-      console.error(error);
+      handleFirestoreError(error, OperationType.UPDATE, path);
     }
   };
 
@@ -321,8 +331,8 @@ const OfficerDashboard = ({ user }: { user: UserProfile }) => {
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight">Officer Portal</h2>
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Manage Incoming Cases</p>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight">{t('officer_portal') || 'Officer Portal'}</h2>
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">{t('manage_cases') || 'Manage Incoming Cases'}</p>
         </div>
         <div className="p-3 bg-blue-600 text-white rounded-2xl">
           <Shield size={24} />
@@ -369,13 +379,13 @@ const OfficerDashboard = ({ user }: { user: UserProfile }) => {
                 onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
                 className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-bold uppercase tracking-widest"
               >
-                Accept Case
+                {t('accept_case') || 'Accept Case'}
               </button>
               <button 
                 onClick={() => handleUpdateStatus(c.id, 'RESOLVED')}
                 className="flex-1 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-bold uppercase tracking-widest"
               >
-                Mark Resolved
+                {t('mark_resolved') || 'Mark Resolved'}
               </button>
             </div>
           </div>
@@ -385,7 +395,8 @@ const OfficerDashboard = ({ user }: { user: UserProfile }) => {
   );
 };
 
-const OfficerDetails = ({ complaint }: { complaint: Complaint }) => {
+const OfficerDetails = ({ complaint, lang }: { complaint: Complaint, lang: Language }) => {
+  const { t } = useTranslation(lang);
   if (!complaint.assignedOfficerId) {
     return (
       <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex items-center gap-4">
@@ -393,8 +404,8 @@ const OfficerDetails = ({ complaint }: { complaint: Complaint }) => {
           <Clock size={24} />
         </div>
         <div>
-          <h4 className="font-bold text-amber-900 text-sm">Under Review</h4>
-          <p className="text-[10px] text-amber-700 uppercase tracking-widest font-bold">An officer will be assigned shortly</p>
+          <h4 className="font-bold text-amber-900 text-sm">{t('under_review') || 'Under Review'}</h4>
+          <p className="text-[10px] text-amber-700 uppercase tracking-widest font-bold">{t('officer_assignment_pending') || 'An officer will be assigned shortly'}</p>
         </div>
       </div>
     );
@@ -429,13 +440,15 @@ const OfficerDetails = ({ complaint }: { complaint: Complaint }) => {
   );
 };
 
-const History = ({ user }: { user: UserProfile }) => {
+const History = ({ user, lang }: { user: UserProfile, lang: Language }) => {
+  const { t } = useTranslation(lang);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const path = 'complaints';
     const q = query(
-      collection(db, 'complaints'),
+      collection(db, path),
       where('userId', '==', user.uid),
       orderBy('timestamp', 'desc')
     );
@@ -444,6 +457,8 @@ const History = ({ user }: { user: UserProfile }) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
       setComplaints(data);
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
     });
 
     return () => unsubscribe();
@@ -453,13 +468,13 @@ const History = ({ user }: { user: UserProfile }) => {
 
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-xl font-black text-gray-900 tracking-tight">Case Tracking</h2>
-      <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">{complaints.length} Total Reports</p>
+      <h2 className="text-xl font-black text-gray-900 tracking-tight">{t('track_case')}</h2>
+      <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">{complaints.length} {t('total_reports') || 'Total Reports'}</p>
       
       {complaints.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-gray-200">
           <Clock className="mx-auto text-gray-300 mb-2" size={32} />
-          <p className="text-sm text-gray-400">No reports found.</p>
+          <p className="text-sm text-gray-400">{t('no_reports') || 'No reports found.'}</p>
         </div>
       ) : (
         complaints.map((c) => (
@@ -483,8 +498,8 @@ const History = ({ user }: { user: UserProfile }) => {
             </div>
             
             <div className="pt-4 border-t border-gray-50">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Handling Officer</h4>
-              <OfficerDetails complaint={c} />
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">{t('handling_officer') || 'Handling Officer'}</h4>
+              <OfficerDetails complaint={c} lang={lang} />
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
@@ -497,8 +512,10 @@ const History = ({ user }: { user: UserProfile }) => {
   );
 };
 
-const Profile = ({ user }: { user: UserProfile }) => (
-  <div className="p-4 space-y-6">
+const Profile = ({ user, lang }: { user: UserProfile, lang: Language }) => {
+  const { t } = useTranslation(lang);
+  return (
+    <div className="p-4 space-y-6">
     <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
       <div className="w-24 h-24 bg-gray-100 rounded-full overflow-hidden mb-4 border-4 border-white shadow-md">
         {user.photoURL ? (
@@ -521,39 +538,38 @@ const Profile = ({ user }: { user: UserProfile }) => (
       </div>
     </div>
 
-    <div className="space-y-4">
-      <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Account Details</h3>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <Clock size={18} className="text-gray-400" />
-              <span className="text-sm text-gray-600">Member Since</span>
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">{t('account_details') || 'Account Details'}</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Clock size={18} className="text-gray-400" />
+                <span className="text-sm text-gray-600">{t('member_since') || 'Member Since'}</span>
+              </div>
+              <span className="text-sm font-bold text-gray-900">
+                {formatDate(user.memberSince)}
+              </span>
             </div>
-            <span className="text-sm font-bold text-gray-900">
-              {formatDate(user.memberSince)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <PhoneCall size={18} className="text-gray-400" />
-              <span className="text-sm text-gray-600">Phone</span>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <PhoneCall size={18} className="text-gray-400" />
+                <span className="text-sm text-gray-600">{t('phone') || 'Phone'}</span>
+              </div>
+              <span className="text-sm font-bold text-gray-900">{user.phoneNumber || 'Not provided'}</span>
             </div>
-            <span className="text-sm font-bold text-gray-900">{user.phoneNumber || 'Not provided'}</span>
           </div>
         </div>
-      </div>
-    </div>
 
-    <button 
-      onClick={() => signOut(auth)}
-      className="w-full py-4 bg-red-50 text-red-600 rounded-2xl font-bold flex items-center justify-center gap-2"
-    >
-      <LogOut size={20} />
-      Sign Out
-    </button>
-  </div>
-);
+      <button 
+        onClick={() => signOut(auth)}
+        className="w-full py-4 bg-red-50 text-red-600 rounded-2xl font-bold flex items-center justify-center gap-2"
+      >
+        <LogOut size={20} />
+        {t('logout') || 'Logout'}
+      </button>
+    </div>
+  );
+};
 
 // --- Main App ---
 
@@ -563,6 +579,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [showLangSelector, setShowLangSelector] = useState(false);
   const [pendingRole, setPendingRole] = useState<'CITIZEN' | 'OFFICER' | null>(null);
+
+  const { t } = useTranslation(user?.preferredLanguage as Language || 'en');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -697,8 +715,8 @@ export default function App() {
           </div>
           <div>
             <h1 className="font-black text-gray-900 tracking-tight leading-none">SAHAYA AI</h1>
-            <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest mt-0.5">Multilingual Police Portal</p>
-            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5">{user.role} PORTAL</span>
+            <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest mt-0.5">{t('multilingual_portal')}</p>
+            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5">{user.role} {t('portal')}</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -724,42 +742,44 @@ export default function App() {
             >
               {user.role === 'CITIZEN' ? (
                 <>
-                  <SOSButton />
-                  <SahayaLite />
+                  <SOSButton lang={user.preferredLanguage as Language} />
+                  <SahayaLite lang={user.preferredLanguage as Language} />
+
+                  <PersonalContacts user={user} lang={user.preferredLanguage as Language} />
 
                   <div className="mb-8">
-                    <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Welcome, {user.displayName.split(' ')[0]}</h2>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">{t('welcome')}, {user.displayName.split(' ')[0]}</h2>
                     <p className="text-sm text-gray-500 leading-relaxed">
-                      Your safety is our priority. Use the AI Complain assistant for instant reporting.
+                      {t('safety_priority')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <ServiceCard 
                       icon={FileText} 
-                      title="File Case" 
-                      subtitle="Online Reporting" 
+                      title={t('file_case')} 
+                      subtitle={t('online_reporting')} 
                       color="bg-blue-50 text-blue-600"
                       onClick={() => setActiveTab('file-case')}
                     />
                     <ServiceCard 
                       icon={MessageSquare} 
-                      title="AI Assistant" 
-                      subtitle="Chat in any language" 
+                      title={t('ai_assistant')} 
+                      subtitle={t('chat_any_lang')} 
                       color="bg-green-50 text-green-600"
                       onClick={() => setActiveTab('chat')}
                     />
                     <ServiceCard 
                       icon={HistoryIcon} 
-                      title="Track Case" 
-                      subtitle="Officer Details" 
+                      title={t('track_case')} 
+                      subtitle={t('officer_details')} 
                       color="bg-amber-50 text-amber-600"
                       onClick={() => setActiveTab('history')}
                     />
                     <ServiceCard 
                       icon={MapPin} 
-                      title="Nearby Police" 
-                      subtitle="Find help locally" 
+                      title={t('nearby_police')} 
+                      subtitle={t('find_help')} 
                       color="bg-purple-50 text-purple-600"
                       onClick={() => setActiveTab('nearby')}
                     />
@@ -769,14 +789,14 @@ export default function App() {
                     <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
                       <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
                         <PhoneCall size={16} className="text-red-500" />
-                        Emergency Contacts
+                        {t('emergency_contacts')}
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          { label: 'Police', num: '100', color: 'bg-red-50 text-red-600' },
-                          { label: 'Ambulance', num: '108', color: 'bg-blue-50 text-blue-600' },
-                          { label: 'Fire', num: '101', color: 'bg-orange-50 text-orange-600' },
-                          { label: 'Women Help', num: '1091', color: 'bg-pink-50 text-pink-600' }
+                          { label: t('police'), num: '100', color: 'bg-red-50 text-red-600' },
+                          { label: t('ambulance'), num: '108', color: 'bg-blue-50 text-blue-600' },
+                          { label: t('fire'), num: '101', color: 'bg-orange-50 text-orange-600' },
+                          { label: t('women_help'), num: '1091', color: 'bg-pink-50 text-pink-600' }
                         ].map(contact => (
                           <div key={contact.label} className={cn("p-3 rounded-2xl flex flex-col gap-1", contact.color)}>
                             <span className="text-[10px] font-bold uppercase opacity-70">{contact.label}</span>
@@ -789,14 +809,14 @@ export default function App() {
                     <div className="p-6 bg-gray-900 rounded-3xl text-white">
                       <h3 className="text-sm font-bold uppercase tracking-wider text-green-400 mb-4 flex items-center gap-2">
                         <Shield size={16} />
-                        Safety Steps
+                        {t('safety_steps')}
                       </h3>
                       <ul className="space-y-3">
                         {[
-                          'Always keep your location services active.',
-                          'Use Panic Mode for anonymous reporting.',
-                          'Share your live location with trusted contacts.',
-                          'Keep emergency numbers on speed dial.'
+                          t('safety_step_1'),
+                          t('safety_step_2'),
+                          t('safety_step_3'),
+                          t('safety_step_4')
                         ].map((step, i) => (
                           <li key={i} className="flex gap-3 text-xs text-gray-400">
                             <span className="text-green-500 font-bold">0{i+1}</span>
@@ -809,7 +829,7 @@ export default function App() {
                 </>
               ) : (
                 <div className="space-y-6">
-                  <OfficerDashboard user={user} />
+                  <OfficerDashboard user={user} lang={user.preferredLanguage as Language} />
                 </div>
               )}
             </motion.div>
@@ -827,10 +847,10 @@ export default function App() {
                 <button onClick={() => setActiveTab('home')} className="p-2 text-gray-500">
                   <ChevronRight className="rotate-180" />
                 </button>
-                <h2 className="font-bold">File New Case</h2>
+                <h2 className="font-bold">{t('file_new_case')}</h2>
                 <div className="w-10" />
               </div>
-              <ComplaintForm user={user} onComplete={() => setActiveTab('history')} />
+              <ComplaintForm user={user} onComplete={() => setActiveTab('history')} lang={user.preferredLanguage as Language} />
             </motion.div>
           )}
 
@@ -847,10 +867,10 @@ export default function App() {
                   <button onClick={() => setActiveTab('home')} className="p-2 text-gray-500">
                     <ChevronRight className="rotate-180" />
                   </button>
-                  <h2 className="font-bold">AI Assistant</h2>
+                  <h2 className="font-bold">{t('ai_assistant')}</h2>
                   <div className="w-10" />
                 </div>
-                <AIAssistant user={user} />
+                <AIAssistant user={user} lang={user.preferredLanguage as Language} />
               </div>
             </motion.div>
           )}
@@ -862,7 +882,7 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
             >
-              <History user={user} />
+              <History user={user} lang={user.preferredLanguage as Language} />
             </motion.div>
           )}
 
@@ -873,7 +893,7 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <NearbyStations />
+              <NearbyStations lang={user.preferredLanguage as Language} />
             </motion.div>
           )}
 
@@ -884,7 +904,7 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <Profile user={user} />
+              <Profile user={user} lang={user.preferredLanguage as Language} />
             </motion.div>
           )}
 
@@ -895,7 +915,7 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <Settings />
+              <Settings lang={user.preferredLanguage as Language} />
             </motion.div>
           )}
         </AnimatePresence>

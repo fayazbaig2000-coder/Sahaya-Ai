@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Bell, Globe, Lock, Accessibility, FileText, AlertTriangle, ChevronRight, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { Language, useTranslation } from '../lib/translations';
 
 const SettingItem = ({ icon: Icon, title, subtitle }: any) => (
   <button className="w-full p-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:bg-gray-50 transition-colors">
@@ -18,7 +19,8 @@ const SettingItem = ({ icon: Icon, title, subtitle }: any) => (
   </button>
 );
 
-export const Settings = () => {
+export const Settings = ({ lang }: { lang: Language }) => {
+  const { t } = useTranslation(lang);
   const [emailAlerts, setEmailAlerts] = React.useState(true);
   const [smsAlerts, setSmsAlerts] = React.useState(false);
   const [notifTypes, setNotifTypes] = React.useState({
@@ -33,21 +35,21 @@ export const Settings = () => {
         <div className="p-2 bg-gray-900 text-white rounded-lg">
           <Shield size={24} />
         </div>
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Portal Settings</h2>
+        <h2 className="text-2xl font-black text-gray-900 tracking-tight">{t('portal_settings') || 'Portal Settings'}</h2>
       </div>
 
       <div className="space-y-3">
         <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100 space-y-6">
           <div className="flex items-center gap-3 mb-2">
             <Bell className="text-blue-600" size={20} />
-            <h3 className="font-bold text-gray-900">Notification Preferences</h3>
+            <h3 className="font-bold text-gray-900">{t('notification_preferences') || 'Notification Preferences'}</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-gray-900">Email Alerts</p>
-                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Case status updates via email</p>
+                <p className="text-sm font-bold text-gray-900">{t('email_alerts') || 'Email Alerts'}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">{t('email_alerts_hint') || 'Case status updates via email'}</p>
               </div>
               <button 
                 onClick={() => setEmailAlerts(!emailAlerts)}
@@ -65,8 +67,8 @@ export const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-gray-900">SMS Alerts</p>
-                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Instant mobile notifications</p>
+                <p className="text-sm font-bold text-gray-900">{t('sms_alerts') || 'SMS Alerts'}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">{t('sms_alerts_hint') || 'Instant mobile notifications'}</p>
               </div>
               <button 
                 onClick={() => setSmsAlerts(!smsAlerts)}
@@ -83,7 +85,7 @@ export const Settings = () => {
             </div>
 
             <div className="pt-4 border-t border-gray-50">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Notification Types</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">{t('notification_types') || 'Notification Types'}</p>
               <div className="space-y-3">
                 {Object.entries(notifTypes).map(([key, value]) => (
                   <label key={key} className="flex items-center gap-3 cursor-pointer">
@@ -103,20 +105,20 @@ export const Settings = () => {
           </div>
         </div>
 
-        <SettingItem icon={Globe} title="Language & Region" subtitle="Set your preferred portal language" />
-        <SettingItem icon={Lock} title="Privacy" subtitle="Control your data sharing preferences" />
-        <SettingItem icon={Accessibility} title="Accessibility" subtitle="Adjust font size and contrast" />
-        <SettingItem icon={FileText} title="System Report" subtitle="Architecture & Protocol" />
+        <SettingItem icon={Globe} title={t('language_region') || "Language & Region"} subtitle={t('language_region_hint') || "Set your preferred portal language"} />
+        <SettingItem icon={Lock} title={t('privacy') || "Privacy"} subtitle={t('privacy_hint') || "Control your data sharing preferences"} />
+        <SettingItem icon={Accessibility} title={t('accessibility') || "Accessibility"} subtitle={t('accessibility_hint') || "Adjust font size and contrast"} />
+        <SettingItem icon={FileText} title={t('system_report') || "System Report"} subtitle={t('system_report_hint') || "Architecture & Protocol"} />
       </div>
 
       <div className="pt-8">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-4">Danger Zone</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-4">{t('danger_zone') || 'Danger Zone'}</h3>
         <button className="w-full p-4 bg-red-50 text-red-600 rounded-2xl font-bold flex items-center justify-center gap-2 border border-red-100">
           <AlertTriangle size={20} />
-          Delete Account
+          {t('delete_account') || 'Delete Account'}
         </button>
         <p className="mt-3 text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">
-          Once you delete your account, there is no going back. Please be certain.
+          {t('delete_account_hint') || 'Once you delete your account, there is no going back. Please be certain.'}
         </p>
       </div>
     </div>

@@ -99,11 +99,15 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isOwner(userId) || isOfficer() || isAdmin());
       allow create: if isAuthenticated() && isValidUser(request.resource.data);
       allow update: if isAuthenticated() && (isOwner(userId) || isAdmin()) && 
                     isValidUser(request.resource.data) &&
                     (request.resource.data.role == resource.data.role || isAdmin());
+
+      match /personalContacts/{contactId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /complaints/{complaintId} {
